@@ -1,8 +1,10 @@
+mod parameters;
+
 use config::{Config, File};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::process::Command;
-use std::thread;
+use std::{env, thread};
 use std::time::Duration;
 use chrono::Local;
 use std::fs::File as FsFile;
@@ -11,7 +13,16 @@ use std::str::FromStr;
 use ipnetwork::IpNetwork;
 
 fn main() {
-    let settings = Settings::new();
+    let args: Vec<String> = env::args().collect();
+    let configuration = parameters::handle_arguments(args);
+
+    let mut settings = Settings::new();
+    settings.vlan_check_range_start = configuration.range_min;
+    settings.vlan_check_range_start = configuration.range_min;
+    settings.interface = configuration.interface;
+    settings.dhcp_wait_time = configuration.wait;
+
+
     let mut vlans_with_ips = Vec::new();
 
     println!("wait time: {}", settings.dhcp_wait_time);
@@ -62,7 +73,7 @@ fn extract_ip_from_interface(interface: &str) -> Option<IpNetwork> {
     None
 }
 
-fn check_vlan(interface: &str, vlan_id: u32, wait_time: u64) -> Option<VlanInfo> {
+fn check_vlan(interface: &str, vlan_id: u32, wait_time: u16) -> Option<VlanInfo> {
     let interface_vlan = format!("{}.{}", interface, vlan_id);
     println!("Checking VLAN {}...", vlan_id);
 
@@ -83,7 +94,7 @@ fn check_vlan(interface: &str, vlan_id: u32, wait_time: u64) -> Option<VlanInfo>
 
     // Wait for DHCP
     println!("Waiting for {} seconds...", wait_time);
-    thread::sleep(Duration::from_secs(wait_time));
+    thread::sleep(Duration::from_secs(wait_time as u64));
 
     // command which could force retrieving ip address:
     // format!("sudo dhclient {}", interface_vlan)
@@ -125,7 +136,7 @@ fn run_command(command: &str) -> Result<String, String> {
 #[derive(Debug, Deserialize)]
 struct Settings {
     interface: String,
-    dhcp_wait_time: u64,
+    dhcp_wait_time: u16,
     calculate_possible_hosts: bool,
     calculate_subnet_mask: bool,
     vlan_check_range_start: u32,
@@ -133,7 +144,6 @@ struct Settings {
 }
 
 impl Settings {
-    // TODO at one point introduce parameters to set these settings by params on command line
     fn new() -> Self {
         return Settings {
             interface: "eth1".to_string(),
