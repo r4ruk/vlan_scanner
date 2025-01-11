@@ -54,7 +54,8 @@ fn extract_ip_from_interface(interface: &str) -> Option<IpNetwork> {
     let command = format!("ip addr show {}", interface);
     if let Ok(output) = run_command(&command) {
 
-        println!("{}", output.clone());
+        // Debug purposes
+        // println!("{}", output.clone());
 
         // should match "inet 192.168.1.1/XX" where XX could be any number
         let re = Regex::new(r"inet (\d+\.\d+\.\d+\.\d+/\d+)").unwrap();
@@ -80,24 +81,25 @@ fn check_vlan(interface: &str, vlan_id: u32, wait_time: u16) -> Option<VlanInfo>
     println!("Checking VLAN {}...", vlan_id);
 
     // Create VLAN
-    println!("ip link add link {} name {} type vlan id {}", interface, interface_vlan, vlan_id);
+    // println!("ip link add link {} name {} type vlan id {}", interface, interface_vlan, vlan_id);
     let res = run_command(&format!("ip link add link {} name {} type vlan id {}", interface, interface_vlan, vlan_id));
     match res {
-        Ok(value) => println!("Success: {}", value),
+        Ok(_) => (),
         Err(err) => println!("Error: {}", err),
     }
 
-    println!("setting ip link up for interface vlan: {}", interface_vlan);
+    // println!("setting ip link up for interface vlan: {}", interface_vlan);
     let res = run_command(&format!("ip link set dev {} up", interface_vlan));
     match res {
-        Ok(value) => println!("Success: {}", value),
+        Ok(_) => (),
         Err(err) => println!("Error: {}", err),
     }
-    println!("udhcpc -i {} -T {} -t 1 -n", interface_vlan, wait_time);
+
+    // println!("udhcpc -i {} -T {} -t 1 -n", interface_vlan, wait_time);
     let res =  run_command(&format!("udhcpc -i {} -T {} -t 1 -n", interface_vlan, wait_time));
     match res {
-        Ok(value) => println!("Success: {}", value),
-        Err(err) => println!("Error: {}", err),
+        Ok(_) => (),
+        Err(_) => println!("No lease"),
     }
 
     // Extract IP
