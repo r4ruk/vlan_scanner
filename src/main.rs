@@ -18,7 +18,7 @@ fn main() {
 
     let mut settings = Settings::new();
     settings.vlan_check_range_start = configuration.range_min;
-    settings.vlan_check_range_start = configuration.range_min;
+    settings.vlan_check_range_end = configuration.range_max;
     settings.interface = configuration.interface;
     settings.dhcp_wait_time = configuration.wait;
 
@@ -74,6 +74,8 @@ fn extract_ip_from_interface(interface: &str) -> Option<IpNetwork> {
 }
 
 fn check_vlan(interface: &str, vlan_id: u32, wait_time: u16) -> Option<VlanInfo> {
+    println!("");
+    println!("");
     let interface_vlan = format!("{}.{}", interface, vlan_id);
     println!("Checking VLAN {}...", vlan_id);
 
@@ -86,34 +88,31 @@ fn check_vlan(interface: &str, vlan_id: u32, wait_time: u16) -> Option<VlanInfo>
     }
 
     println!("setting ip link up for interface vlan: {}", interface_vlan);
-    let res = run_command(&format!("ip link set up {}", interface_vlan));
+    let res = run_command(&format!("ip link set dev {} up", interface_vlan));
+    match res {
+        Ok(value) => println!("Success: {}", value),
+        Err(err) => println!("Error: {}", err),
+    }
+    println!("udhcpc -i {} -T {} -t 1 -n", interface_vlan, wait_time);
+    let res =  run_command(&format!("udhcpc -i {} -T {} -t 1 -n", interface_vlan, wait_time));
     match res {
         Ok(value) => println!("Success: {}", value),
         Err(err) => println!("Error: {}", err),
     }
 
-    // Wait for DHCP
-    println!("Waiting for {} seconds...", wait_time);
-    thread::sleep(Duration::from_secs(wait_time as u64));
-
-    // command which could force retrieving ip address:
-    // format!("sudo dhclient {}", interface_vlan)
-
     // Extract IP
     if let Some(ip) = extract_ip_from_interface(&interface_vlan) {
         println!("VLAN {} has IP: {}", vlan_id, ip);
-        Some(VlanInfo { vlan_id, ip_address: Some(ip.to_string())})
+        Some(VlanInfo {interface_name: interface_vlan, ip_address: Some(ip.to_string())})
     } else {
         println!("NO IP");
-        println!("");
-        println!("");
         None
     }
 }
 
 #[derive(Debug, Serialize)]
 struct VlanInfo {
-    vlan_id: u32,
+    interface_name: String,
     ip_address: Option<String>,
 }
 
